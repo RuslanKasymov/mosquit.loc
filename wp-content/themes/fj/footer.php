@@ -41,16 +41,17 @@
                 <div class="succes-result">Ваш заказ принят на обработку! Наши мененджеры свяжутся с Вами в ближайшее
                     время!
                 </div>
+                <div class="error-valid-result">Ошибка валидации, проверьте введенные данные</div>
                 <div class="error-result">Выберите товар из списка!</div>
                 <div class="form-modal">
                     <div class="form-modal-text">
                         Введите контактные данные и наши мененджеры свяжутся с Вами в ближайшее время
                     </div>
                     <div class="form-modal-inp">
-                        <form action="" method="post">
+                        <form action="" method="post" id="net-modal-form">
                             <label><input type="text" name="your-name" class="inp" placeholder="Имя" required></label>
-                            <label><input type="text" name="your-mumber" class="inp" placeholder="Номер"
-                                          required></label>
+                            <label><input type="text" name="your-mumber" class="inp" placeholder="Номер" required></label>
+                            <div id="widget-net"></div>
                             <div class="buyZav" id="buyZav">Заказать</div>
                         </form>
                     </div>
@@ -62,6 +63,8 @@
 
 <?php wp_footer(); ?>
 <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
+<!--<script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit" async defer></script>-->
+
 
 </body>
 </html>

@@ -9,10 +9,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="yandex-verification" content="250ff443ad365f76"/>
     <title>Москитные сетки в Омске на заказ</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <?php wp_head(); ?>
+
 </head>
 <body <?php body_class(); ?>>
+<script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit" async defer></script>
 <div class="wrapper">
     <div class="content">
         <div class="container top-header-hidden"></div>

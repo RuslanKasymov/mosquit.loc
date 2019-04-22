@@ -26,6 +26,18 @@ function enqueue_scripts()
 
 add_action('wp_enqueue_scripts', 'enqueue_scripts');
 
+function enqueue_recaptcha()
+{
+    if (is_front_page()) {
+        wp_register_script('recapthca', get_template_directory_uri() . '/js/recapthcaWidget.js', '', 1.1, true);
+    } else {
+        wp_register_script('recapthca', get_template_directory_uri() . '/js/recapthcaWidgetOnlyNet.js', '', 1.1, true);
+    }
+    wp_enqueue_script('recapthca');
+}
+
+add_action( 'wp_head', 'enqueue_recaptcha' );
+
 function get_compl_list_wc_func()
 {
     $loop = new WP_Query(array(
@@ -36,7 +48,7 @@ function get_compl_list_wc_func()
     ));
 
 
-    while ($loop->have_posts()): $loop->the_post();?>
+    while ($loop->have_posts()): $loop->the_post(); ?>
         <div class="item-modal">
             <div class="item-name"><?php the_title(); ?></div>
             <div class="item-price"><?php echo get_post_meta(get_the_ID(), '_price', true); ?></div>
@@ -70,13 +82,13 @@ function get_product_list_wc_func()
                     <div class="col-sm-6">
                         <div class="prod-content">
                             <div class="prod-title">
-                                <?php the_title(sprintf('<a href="%s">', esc_url( get_permalink() ) ),'</a>' ); ?>
+                                <?php the_title(sprintf('<a href="%s">', esc_url(get_permalink())), '</a>'); ?>
                             </div>
                             <div class="prod-price">
                                 от <?php echo get_post_meta(get_the_ID(), '_price', true); ?>
                             </div>
                             <div class="prod-descr">
-                                <?php the_excerpt()?>
+                                <?php the_excerpt() ?>
                             </div>
                             <div class="btn-fj animated net-btn" data-toggle="modal" data-target="#netModal"
                                  data-id="<?php the_ID(); ?>">Заказать сейчас!
@@ -106,7 +118,7 @@ function myajax_data()
     ));
 }
 
-add_action('wp_footer', 'my_action_javascript', 99); // для фронта
+add_action('wp_footer', 'my_action_javascript', 99);
 function my_action_javascript()
 {
     ?>
@@ -118,7 +130,6 @@ function my_action_javascript()
                 $('#tovarModalLabel')[0].innerHTML = $(this).parent().find('.prod-title a')[0].innerHTML;
             });
             $('.single-buy-prod').on('click', function () {
-                console.log(11);
                 $('#buyZav')[0].dataset.id = $(this)[0].dataset.id;
                 $('.succes-result').hide();
                 $('#tovarModalLabel')[0].innerHTML = $('.title')[0].innerHTML;
@@ -132,42 +143,45 @@ function my_action_javascript()
             $('#buyZav').on('click', function () {
                 var nameInp = $(this).parent().find('input[name="your-name"]');
                 var phoneInp = $(this).parent().find('input[name="your-mumber"]');
-                if (validate(nameInp, phoneInp)) {
+                var googleResponse = grecaptcha.getResponse(widgetId2);
+                if (validate(nameInp, phoneInp, googleResponse)) {
                     var data = {
                         action: 'buy_net',
                         product_id: $(this)[0].dataset.id,
                         name: nameInp[0].value,
                         numbers: phoneInp[0].value,
+                        g_recaptcha_response: googleResponse,
                     };
                     $(this).parent().parent().parent().parent().parent().find('.form_load')[0].style.display = 'block';
                     var thisBtn = $(this);
+                    console.log(data);
                     jQuery.post(
                         myajax.url,
                         data,
                         function (response) {
-                            thisBtn.parent().parent().parent().parent().parent().find('.form_load')[0].style.display = 'none';
-                            thisBtn.parent().parent().parent().parent().find('.inp-modal').each(function (indx, element) {
-                                if (parseInt($(element)[0].value) > 0) {
-                                    $(element)[0].value = 0;
-                                    $(element).trigger("change");
-                                }
-                            });
-                            thisBtn.parent().parent().parent().parent().find('.succes-result').show(1000);
+                            if (response) {
+                                thisBtn.parent().parent().parent().parent().parent().find('.form_load')[0].style.display = 'none';
+                                thisBtn.parent().parent().parent().parent().find('.succes-result').show(1000);
+                            } else {
+                                thisBtn.parent().parent().parent().parent().parent().find('.form_load')[0].style.display = 'none';
+                                thisBtn.parent().parent().parent().parent().find('.error-valid-result').show(1000);
+                            }
                         }
                     );
                 }
             });
 
             $('#buyCompl').on('click', function () {
-                var nameInp =$(this).parent().find('input[name="your-name"]');
-                var phoneInp =$(this).parent().find('input[name="your-mumber"]');
+                var nameInp = $(this).parent().find('input[name="your-name"]');
+                var phoneInp = $(this).parent().find('input[name="your-mumber"]');
                 var inpsModal = $(this).parent().parent().parent().parent().find('.inp-modal');
-                if( validateInps(inpsModal) && validate(nameInp,phoneInp)){
+                var googleResponse = grecaptcha.getResponse(widgetId1);
+                if (validateInps(inpsModal) && validate(nameInp, phoneInp, googleResponse)) {
                     var orderList = [];
                     var checkInputs = false;
-                    inpsModal.each(function(indx, element){
-                        if(parseInt($(element)[0].value)>0){
-                            orderList.push({id:$(element)[0].dataset.id, val: $(element)[0].value});
+                    inpsModal.each(function (indx, element) {
+                        if (parseInt($(element)[0].value) > 0) {
+                            orderList.push({id: $(element)[0].dataset.id, val: $(element)[0].value});
                             checkInputs = true;
                         }
                     });
@@ -176,22 +190,28 @@ function my_action_javascript()
                         orderList: orderList,
                         name: nameInp[0].value,
                         numbers: phoneInp[0].value,
-                        is_calc: 0
+                        g_recaptcha_response: googleResponse,
                     };
-                    $(this).parent().parent().parent().parent().parent().find('.form_load')[0].style.display='block';
+                    console.log(data);
+                    $(this).parent().parent().parent().parent().parent().find('.form_load')[0].style.display = 'block';
                     var thisBtn = $(this);
                     jQuery.post(
                         myajax.url,
                         data,
                         function (response) {
-                            thisBtn.parent().parent().parent().parent().parent().find('.form_load')[0].style.display='none';
-                            thisBtn.parent().parent().parent().parent().find('.inp-modal').each(function(indx, element){
-                                if(parseInt($(element)[0].value)>0){
-                                    $(element)[0].value = 0;
-                                    $(element).trigger("change");
-                                }
-                            });
-                            thisBtn.parent().parent().parent().parent().find('.succes-result').show(1000);
+                            if (response) {
+                                thisBtn.parent().parent().parent().parent().parent().find('.form_load')[0].style.display = 'none';
+                                thisBtn.parent().parent().parent().parent().find('.inp-modal').each(function (indx, element) {
+                                    if (parseInt($(element)[0].value) > 0) {
+                                        $(element)[0].value = 0;
+                                        $(element).trigger("change");
+                                    }
+                                });
+                                thisBtn.parent().parent().parent().parent().find('.succes-result').show(1000);
+                            } else {
+                                thisBtn.parent().parent().parent().parent().parent().find('.form_load')[0].style.display = 'none';
+                                thisBtn.parent().parent().parent().parent().find('.error-valid-result').show(1000);
+                            }
                         }
                     );
                 }
@@ -209,7 +229,12 @@ function my_action_javascript()
                         myajax.url,
                         data,
                         function (response) {
-                            $('.callback-wrap')[0].innerHTML = "<div class=\"succes-result d-block\">Ваш заказ принят на обработку! Наши мененджеры свяжутся с Вами в ближайшее время!</div>\n";
+                            if (response) {
+                                $('.callback-wrap')[0].innerHTML = "<div class=\"succes-result d-block\">Ваш заказ принят на обработку! Наши мененджеры свяжутся с Вами в ближайшее время!</div>\n";
+                            } else {
+                                thisBtn.parent().parent().parent().parent().parent().find('.form_load')[0].style.display = 'none';
+                                thisBtn.parent().parent().parent().parent().find('.error-valid-result').show(1000);
+                            }
                         }
                     );
                 } else {
@@ -219,21 +244,51 @@ function my_action_javascript()
                 }
             });
 
-            function validate(nameInp, phoneInp) {
+            function validate(nameInp, phoneInp, googleResponse) {
                 var result = true;
                 var regNum = /^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$/;
                 if (nameInp[0].value !== '') {
+                    $('.error-compl-valid-result').hide(1000);
                     nameInp.removeClass('empty_field');
                 } else {
                     nameInp.addClass('empty_field');
+                    $('.error-compl-valid-result').show(1000);
                     result = false;
                 }
                 if (regNum.test(phoneInp[0].value)) {
                     phoneInp.removeClass('empty_field');
+                    $('.error-compl-valid-result').hide(1000);
                 } else {
                     phoneInp.addClass('empty_field');
+                    $('.error-compl-valid-result').show(1000);
                     result = false;
+                }
+                if (googleResponse) {
+                    phoneInp.removeClass('empty_field');
+                    $('.error-compl-valid-result').hide(1000);
+                } else {
+                    phoneInp.addClass('empty_field');
+                    $('.error-compl-valid-result').show(1000);
+                    result = false;
+                }
 
+                return result;
+            }
+
+            function validateInps(inpsModal) {
+                var result = true;
+                var checkInputs = false;
+                inpsModal.each(function (indx, element) {
+                    if (parseInt($(element)[0].value) > 0) {
+                        checkInputs = true;
+                    }
+                });
+                if (checkInputs) {
+                    inpsModal.parent().parent().parent().parent().parent().find('.error-result').fadeOut("slow", function () {
+                    });
+                } else {
+                    inpsModal.parent().parent().parent().parent().parent().find('.error-result').show(500);
+                    result = false;
                 }
                 return result;
             }
@@ -246,6 +301,28 @@ add_action('wp_ajax_buy_net', 'my_action_add');
 add_action('wp_ajax_nopriv_buy_net', 'my_action_add');
 function my_action_add()
 {
+    if (empty($_POST['name']) || empty($_POST['numbers']) || empty($_POST['product_id'])) {
+        return false;
+    }
+
+    $url = 'https://www.google.com/recaptcha/api/siteverify';
+    $data = [
+        'secret' => '6Lf6l1AUAAAAANXqjPAwOc4-BF2teVb6M818UGyi',
+        'response' => $_POST["g_recaptcha_response"]
+    ];
+    $options = [
+        'http' => [
+            'method' => 'POST',
+            'content' => http_build_query($data)
+        ]
+    ];
+    $context = stream_context_create($options);
+    $verify = file_get_contents($url, false, $context);
+    $captcha_success = json_decode($verify);
+    if ($captcha_success->success == false) {
+        return false;
+    }
+
     global $post, $woocommerce;
     $order_id = wc_create_order();
     $order = wc_get_order($order_id);
@@ -262,17 +339,35 @@ function my_action_add()
     $email = $mailer->emails['WC_Email_New_Order'];
     $email->trigger($order->id);
 
-    wp_die();
+    return true;
 }
 
 add_action('wp_ajax_compl_action', 'compl_action');
 add_action('wp_ajax_nopriv_compl_action', 'compl_action');
 function compl_action()
 {
+    if (empty($_POST['name']) || empty($_POST["g_recaptcha_response"]) || empty($_POST['numbers']) || empty($_POST['orderList'])) {
+        return false;
+    }
+
+    $url = 'https://www.google.com/recaptcha/api/siteverify';
+    $data = [
+        'secret' => '6Lf6l1AUAAAAANXqjPAwOc4-BF2teVb6M818UGyi',
+        'response' => $_POST["g_recaptcha_response"]
+    ];
+    $options = [
+        'http' => [
+            'method' => 'POST',
+            'content' => http_build_query($data)
+        ]
+    ];
+
     global $post, $woocommerce;
     $order_id = wc_create_order();
     $order = wc_get_order($order_id);
-    $order->add_product(get_product($_POST['product_id']), 1); //
+    foreach ($_POST['orderList'] as $item) {
+        $order->add_product(get_product($item['id']), $item['val']); //
+    }
     $address = array(
         'first_name' => $_POST['name'],
         'phone' => $_POST['numbers'],
@@ -285,13 +380,16 @@ function compl_action()
     $email = $mailer->emails['WC_Email_New_Order'];
     $email->trigger($order->id);
 
-    wp_die();
+    return true;
 }
 
 add_action('wp_ajax_callback', 'callback_func');
 add_action('wp_ajax_nopriv_callback', 'callback_func');//остановился тут
 function callback_func()
 {
+    if (empty($_POST['numbers'])) {
+        return false;
+    }
     global $post, $woocommerce;
     $order_id = wc_create_order();
     $order = wc_get_order($order_id);
@@ -358,5 +456,4 @@ function child_manage_woocommerce_styles()
 
         }
     }
-
 }
